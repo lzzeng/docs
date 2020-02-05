@@ -1,0 +1,32 @@
+stages:
+  - build
+  - deploy
+
+
+build:
+  image: docker:stable
+  stage: build
+  tags:
+    - dind-v19
+  script:
+    - docker info
+    - image_name=192.168.101.30/yhgit/devops/infra-docs:latest
+    - docker build -t $image_name .
+    - docker login $Harbor_AddRess -u $Harbor_User -p $Harbor_Pwd
+    - docker push $image_name
+  only:
+    - master # this job will affect only the 'master' branch
+
+
+ansible-docker:
+  image: 192.168.101.30/yhgit/devops/ansible-alpine:2.8.0
+  stage: deploy
+  tags:
+    - dind-v19
+  script:
+    - echo "GITBOOK_HOST is $GITBOOK_HOST_DEV"
+    - echo "$SSH_PRIVATE_KEY_DEV" > ~/.key
+    - chmod 600 ~/.key
+    - echo "$ANSIBLE_CFG_CONTENT" > ~/.ansible.cfg
+    - ansible-playbook -i "$GITBOOK_HOST_DEV," --private-key ~/.key -u root deploy/inDocker.yml
+
